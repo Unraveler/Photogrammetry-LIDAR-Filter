@@ -1,0 +1,128 @@
+%% Programa de Classificação de Dados LiDAR
+%Realizado por Rui Jorge Abrunhosa Nunes nº32092
+%Produção Cartográfica 2011/2012
+%MESTRADO EM ENGENHARIA GEOGRÁFICA
+%--------------------------------------------------------------------------
+clc;
+close all;
+format long g;
+
+%% Abertura de Ficheiros---------------------------------------------------
+NaoTerreno = fopen('NaoTerreno.txt', 'w');
+Terreno = fopen('Terreno.txt', 'w');
+Outliers = fopen('Outliers.txt','w');
+Edificios = fopen('Edificios.txt','w');
+temp = fopen('temp.txt','w');
+
+%% Leitura dos dados do ficheiro-------------------------------------------
+%Leitura das cotas
+DELIMITER = ' ';
+HEADERLINES = 6;
+newData1 = importdata('LIDARasc118.txt', DELIMITER, HEADERLINES);
+vars = fieldnames(newData1);
+for i = 1:length(vars)
+    assignin('base', vars{i}, newData1.(vars{i}));
+end
+
+%Criação do vector com os dados LiDAR
+cotas_lidar = data;
+
+%Leitura das coordenadas dos cantos
+DELIMITER = ' ';
+HEADERLINES = 0;
+
+newData2 = importdata('LIDARasc118.txt', DELIMITER, HEADERLINES);
+
+vars = fieldnames(newData2);
+for i = 1:length(vars)
+    assignin('base', vars{i}, newData2.(vars{i}));
+end
+
+%Criação de variáveis com informação do cabeçalho
+linhas = data(1,1);
+colunas = data(1,1);
+X_Canto = data(3,1);
+Y_Canto = data(4,1);
+
+%Preenchimento de Matrizes
+X = zeros(linhas:colunas);
+Y = zeros(linhas:colunas);
+
+k = X_Canto-linhas;
+l = Y_Canto-colunas;
+
+for i=1:linhas
+    for j=1:colunas
+        X(i,j) = k;
+        Y(i,j) = l;
+        l = l+1;
+    end
+    k = k-1;
+    l = Y(i,j)
+end
+
+%% Visualização dos dados -------------------------------------------------
+%Imagem
+figure
+SUBPLOT(1,2,1)
+imagesc(cotas_lidar)
+Title('Topo')
+SUBPLOT(1,2,2)
+mesh(cotas_lidar)
+Title('Prespectiva')
+
+%% Classificação dos Dados ------------------------------------------------
+%Obtenção dos edificios
+Media = mean(cotas_lidar(:));
+class = zeros(linhas:colunas);
+for i=1:linhas
+    for j = 1:colunas
+        
+        if(cotas_lidar(i,j) < Media)
+            classificacao(i,j)=50;
+        else
+            classificacao(i,j)=100;
+        end
+    end
+end
+figure
+imagesc(classificacao)
+Title('Resultado da classificação')
+
+%Eliminação de outliers
+Media2 = mean(cotas_lidar(:))
+for i=1:linhas
+    for j=1:colunas
+        if (classificacao(i,j) == 50 && Z(i,j) < Media2*0.5)
+            classificacao(i,j) = 0 ;
+        end
+    end
+end
+
+
+%% Exportação dos dados ---------------------------------------------------
+Z = cotas_lidar;
+
+for i=1:linhas
+    for j=1:colunas
+        if classificacao(i,j) == 100
+           fprintf(NaoTerreno, 'X= %-10.3f Y= %-10.3f Z= %-10.2f\n', X(i,j),Y(i,j),Z(i,j));
+        else if classificacao(i,j) == 0
+               fprintf(Outliers, 'X= %-10.3f Y= %-10.3f Z= %-10.2f\n', X(i,j),Y(i,j),Z(i,j)); 
+                else if classificacao(i,j) == 50
+                fprintf(Terreno, 'X= %-10.3f Y= %-10.3f Z= %-10.2f\n', X(i,j),Y(i,j),Z(i,j));
+                end
+            end
+        end
+    end
+end
+
+
+%% Fecho de ficheiros -----------------------------------------------------
+fclose(NaoTerreno);
+fclose(Terreno);
+fclose(Outliers);
+fclose(Edificios);
+
+
+
